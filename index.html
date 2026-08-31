@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>โปรแกรมบัญชีรายรับ-รายจ่าย</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 650px; margin: 20px auto; padding: 0 15px; }
+    .summary-box { display: flex; justify-content: space-between; background: #f4f4f4; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+    .form-group { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
+    input, select, button { padding: 8px; font-size: 14px; }
+    .search-bar { width: 100%; margin-bottom: 15px; box-sizing: border-box; }
+    ul { list-style: none; padding: 0; }
+    li { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #ddd; background: #fff; }
+    .income { border-left: 5px solid green; }
+    .expense { border-left: 5px solid red; }
+    .btn-clear { background: #ff4d4d; color: white; border: none; padding: 10px 15px; cursor: pointer; border-radius: 5px; width: 100%; margin-top: 15px; }
+  </style>
+</head>
+<body>
+
+  <h2>โปรแกรมบัญชีรายรับ-รายจ่าย</h2>
+
+  <!-- โจทย์ที่ 4: สรุปรายงานการเงิน -->
+  <div class="summary-box">
+    <div>รายรับรวม: <span id="total-income" style="color: green;">฿0.0</span></div>
+    <div>รายจ่ายรวม: <span id="total-expense" style="color: red;">฿0.0</span></div>
+    <div>คงเหลือสุทธิ: <span id="net-balance">฿0.0</span></div>
+  </div>
+
+  <!-- ฟอร์มเพิ่มข้อมูล & โจทย์ที่ 1: เพิ่มหมวดหมู่ธุรกรรม -->
+  <form id="transaction-form" class="form-group">
+    <select id="type" required>
+      <option value="income">รายรับ</option>
+      <option value="expense">รายจ่าย</option>
+    </select>
+    <input type="text" id="title" placeholder="ชื่อรายการ" required />
+    <select id="category" required>
+      <option value="อาหาร">🍔 อาหาร</option>
+      <option value="เดินทาง">🚗 เดินทาง</option>
+      <option value="ช้อปปิ้ง">🛍️ ช้อปปิ้ง</option>
+      <option value="เงินเดือน">💰 เงินเดือน</option>
+      <option value="อื่นๆ">📦 อื่นๆ</option>
+    </select>
+    <input type="number" id="amount" placeholder="จำนวนเงิน" min="1" step="any" required />
+    <button type="submit">เพิ่มรายการ</button>
+  </form>
+
+  <!-- โจทย์ที่ 2: เพิ่มตัวกรองและค้นหารายการ (Real-time Search) -->
+  <input type="text" id="search-input" class="search-bar" placeholder="🔍 ค้นหาตามชื่อรายการ..." oninput="renderTransactions()" />
+
+  <!-- โจทย์ที่ 3: แสดงประวัติรายการทั้งหมด (เรียงตามลำดับ พร้อม ID, ประเภท, ชื่อรายการ, หมวดหมู่, จำนวนเงิน) -->
+  <ul id="transaction-list"></ul>
+
+  <!-- โจทย์ที่ 5: ปุ่มล้างประวัติทั้งหมด -->
+  <button class="btn-clear" onclick="clearAllData()">ล้างข้อมูลทั้งหมด</button>
+
+  <script>
+    let transactions = [];
+    let nextId = 1;
+
+    const form = document.getElementById('transaction-form');
+    const searchInput = document.getElementById('search-input');
+
+    // เพิ่มรายการใหม่
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      const transaction = {
+        id: nextId++,
+        type: document.getElementById('type').value,
+        title: document.getElementById('title').value,
+        category: document.getElementById('category').value,
+        amount: parseFloat(document.getElementById('amount').value)
+      };
+
+      transactions.push(transaction);
+      form.reset();
+      renderTransactions();
+    });
+
+    // แสดงผลรายการและคำนวณยอดเงิน (โจทย์ที่ 2, 3, 4)
+    function renderTransactions() {
+      const listEl = document.getElementById('transaction-list');
+      const keyword = searchInput.value.toLowerCase();
+      listEl.innerHTML = '';
+
+      let totalIncome = 0;
+      let totalExpense = 0;
+
+      // ค้นหาแบบ Real-time และ Render รายการ
+      transactions.forEach((item) => {
+        // คำนวณสรุปยอดทั้งหมด
+        if (item.type === 'income') totalIncome += item.amount;
+        if (item.type === 'expense') totalExpense += item.amount;
+
+        // กรองการแสดงผลตาม Search Input
+        if (item.title.toLowerCase().includes(keyword)) {
+          const li = document.createElement('li');
+          li.className = item.type;
+          const typeText = item.type === 'income' ? '[รายรับ]' : '[รายจ่าย]';
+          const sign = item.type === 'income' ? '+' : '-';
+          
+          li.innerHTML = `
+            <span><strong>#${item.id}</strong> ${typeText} ${item.title} (${item.category})</span>
+            <span>${sign}฿${item.amount.toLocaleString(undefined, {minimumFractionDigits: 1})}</span>
+          `;
+          listEl.appendChild(li);
+        }
+      });
+
+      // โจทย์ที่ 4: อัปเดตสรุปรายงานการเงิน
+      const netBalance = totalIncome - totalExpense;
+      document.getElementById('total-income').innerText = `฿${totalIncome.toFixed(1)}`;
+      document.getElementById('total-expense').innerText = `฿${totalExpense.toFixed(1)}`;
+      document.getElementById('net-balance').innerText = `฿${netBalance.toFixed(1)}`;
+    }
+
+    // โจทย์ที่ 5: ล้างข้อมูลทั้งหมด
+    function clearAllData() {
+      if (confirm('คุณต้องการล้างข้อมูลทั้งหมดใช่หรือไม่?')) {
+        transactions = [];
+        nextId = 1;
+        renderTransactions();
+      }
+    }
+  </script>
+</body>
+</html>
